@@ -23,7 +23,7 @@ xgboost
 
 # Data processing
 # scipy
-
+joblib
 # Jupyter support
 jupyter
 notebook
