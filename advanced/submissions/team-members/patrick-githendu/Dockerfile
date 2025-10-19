@@ -9,5 +9,5 @@ COPY model.pkl .
 RUN pip install --no-cache-dir -r requirements.txt
 
 EXPOSE 10000
-
+RUN pip install uvicorn
 CMD ["uvicorn", "patrick:app", "--host", "0.0.0.0", "--port", "10000"]
