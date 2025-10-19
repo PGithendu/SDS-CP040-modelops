@@ -2,9 +2,10 @@ import joblib
 import pandas as pd
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+from fastapi.responses import HTMLResponse
 
 # Load the pre-trained model
-model = joblib.load("../../../../models/model.pkl")
+model = joblib.load("model.pkl")  # <-- FIXED PATH
 
 app = FastAPI(title="Car Price Prediction API", version="1.0.0")
 
@@ -32,11 +33,9 @@ def get_metadata():
             "Year_of_manufacture", "Mileage"
         ]
     }
-
-@app.post("/predict")
-def predict_car_price(features: CarFeatures):
+@app.post("/predict/html", response_class=HTMLResponse)
+def predict_car_price_html(features: CarFeatures):
     try:
-        # Extract features
         manufacturer = features.Manufacturer.strip()
         model_name = features.Model.strip()
         fuel = features.Fuel_type.strip()
@@ -44,13 +43,11 @@ def predict_car_price(features: CarFeatures):
         year = int(features.Year_of_manufacture)
         mileage = float(features.Mileage)
 
-        # Derived features
         CURRENT_YEAR = 2025
         age = max(CURRENT_YEAR - year, 0)
         mileage_per_year = mileage / max(age, 1)
         vintage = int(age >= 20)
 
-        # Prepare dataframe
         row = {
             "Manufacturer": manufacturer,
             "Model": model_name,
@@ -63,10 +60,24 @@ def predict_car_price(features: CarFeatures):
             "vintage": vintage,
         }
         df = pd.DataFrame([row])
-
-        # Predict
         prediction = model.predict(df)[0]
-        return {"predicted_price_gbp": float(prediction)}
+
+        html = f"""
+        <table border="1">
+            <tr><th>Feature</th><th>Value</th></tr>
+            <tr><td>Manufacturer</td><td>{manufacturer}</td></tr>
+            <tr><td>Model</td><td>{model_name}</td></tr>
+            <tr><td>Fuel type</td><td>{fuel}</td></tr>
+            <tr><td>Engine size</td><td>{engine}</td></tr>
+            <tr><td>Year of manufacture</td><td>{year}</td></tr>
+            <tr><td>Mileage</td><td>{mileage}</td></tr>
+            <tr><td>Age</td><td>{age}</td></tr>
+            <tr><td>Mileage per year</td><td>{mileage_per_year:.2f}</td></tr>
+            <tr><td>Vintage</td><td>{vintage}</td></tr>
+            <tr><td>Predicted Price (GBP)</td><td>{prediction:.2f}</td></tr>
+        </table>
+        """
+        return HTMLResponse(content=html)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
