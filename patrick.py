@@ -1,3 +1,4 @@
+import os
 import joblib
 import pandas as pd
 from fastapi import FastAPI, HTTPException
@@ -33,8 +34,9 @@ def get_metadata():
             "Year_of_manufacture", "Mileage"
         ]
     }
-@app.post("/predict/html", response_class=HTMLResponse)
-def predict_car_price_html(features: CarFeatures):
+
+@app.post("/predict")
+def predict_car_price(features: CarFeatures):
     try:
         manufacturer = features.Manufacturer.strip()
         model_name = features.Model.strip()
@@ -62,24 +64,17 @@ def predict_car_price_html(features: CarFeatures):
         df = pd.DataFrame([row])
         prediction = model.predict(df)[0]
 
-        html = f"""
-        <table border="1">
-            <tr><th>Feature</th><th>Value</th></tr>
-            <tr><td>Manufacturer</td><td>{manufacturer}</td></tr>
-            <tr><td>Model</td><td>{model_name}</td></tr>
-            <tr><td>Fuel type</td><td>{fuel}</td></tr>
-            <tr><td>Engine size</td><td>{engine}</td></tr>
-            <tr><td>Year of manufacture</td><td>{year}</td></tr>
-            <tr><td>Mileage</td><td>{mileage}</td></tr>
-            <tr><td>Age</td><td>{age}</td></tr>
-            <tr><td>Mileage per year</td><td>{mileage_per_year:.2f}</td></tr>
-            <tr><td>Vintage</td><td>{vintage}</td></tr>
-            <tr><td>Predicted Price (GBP)</td><td>{prediction:.2f}</td></tr>
-        </table>
-        """
-        return HTMLResponse(content=html)
+        return {"predicted_price_gbp": float(prediction)}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+# Root endpoint to serve index.html from the project root
+@app.get("/", response_class=HTMLResponse)
+def read_root():
+    html_path = os.path.join(os.path.dirname(__file__), "index.html")
+    with open(html_path, "r", encoding="utf-8") as f:
+        html_content = f.read()
+    return HTMLResponse(content=html_content)
 
 # To run locally:
 # uvicorn patrick:app --reload
